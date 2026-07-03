@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test / dev
+.venv/
+.pytest_cache/
+.coverage
+
+# Database (local dev)
+*.db
+*.key

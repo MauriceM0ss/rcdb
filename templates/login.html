@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Sign in · RCDB</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('rcdb-theme') || 'neon';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'neon'); }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#07090b">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" method="POST" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}">
+      <div class="login-logo">🖥 <span>RCDB</span></div>
+      <p class="login-sub">Retro Computer Database</p>
+      <label class="modal-label">Password
+        <input type="password" name="password" class="modal-input" autofocus autocomplete="current-password">
+      </label>
+      {% if error %}<p class="modal-error">{{ error }}</p>{% endif %}
+      <button type="submit" class="btn-primary" style="justify-content:center">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{% if active_cat %}{{ active_cat }}{% else %}All Items{% endif %}{% endblock %}
+
+{% block content %}
+{% set singular = {'Desktops': 'Desktop', 'Laptops': 'Laptop',
+                   'Hardware': 'Hardware', 'Manuals': 'Manual'} %}
+<div class="index-header">
+  <div>
+    <h1 class="index-title">{{ active_cat if active_cat else "All Items" }}</h1>
+    <span class="muted-text">{{ items|length }} item{{ 's' if items|length != 1 }}</span>
+  </div>
+  {% if active_cat %}
+  <div class="index-header-actions">
+    <button class="btn-primary btn-sm"
+            onclick="openNewItemModal('{{ active_cat }}')">
+      ＋ Add {{ singular.get(active_cat, active_cat) }}
+    </button>
+    <a href="/" class="btn-secondary btn-sm">Show All</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if items %}
+<div class="items-grid">
+  {% for item in items %}
+  <a href="/item/{{ item.id }}" class="item-card">
+    <div class="item-card-thumb">
+      {% if item.has_photo %}
+      <img src="/api/photo/{{ item.id }}" alt="{{ item.name }}" loading="lazy">
+      {% else %}
+      <div class="item-card-placeholder">🖥</div>
+      {% endif %}
+    </div>
+    <div class="item-card-body">
+      <div class="item-card-name" title="{{ item.name }}">{{ item.name }}</div>
+      <span class="cat-badge" style="--badge-color: {{ item.category | cat_color }}">
+        {{ item.category }}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🖥</div>
+  <p class="empty-title">No items yet</p>
+  <p class="empty-sub">Click <strong>＋ New</strong> in the header to add your first retro machine.</p>
+</div>
+{% endif %}
+{% endblock %}

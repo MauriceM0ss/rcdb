@@ -1,0 +1,21 @@
+services:
+  rcdb:
+    build: .
+    image: rcdb
+    container_name: rcdb
+    restart: unless-stopped
+    ports:
+      # host:container — 8031 on the host (8080 is used by another service),
+      # container stays on 8080. Change the left number to use a different port.
+      - "8031:8080"
+    volumes:
+      - rcdb_data:/data
+    environment:
+      DB_PATH: /data/rcdb.db
+      # Optional: require a password to use the app (leave unset for open LAN use).
+      # RCDB_PASSWORD: "change-me"
+      # Optional: max upload size in MB (default 64).
+      # RCDB_MAX_UPLOAD_MB: "64"
+
+volumes:
+  rcdb_data:

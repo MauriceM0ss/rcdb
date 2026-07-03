@@ -1,0 +1,1065 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="item-detail">
+
+  <!-- ── Top: photo + meta ──────────────────────────────────────────────── -->
+  <div class="item-top">
+
+    <div class="item-photo-wrap" id="photo-wrap">
+      {% if item.has_photo %}
+      <img src="/api/photo/{{ item.id }}" class="item-photo-img" id="photo-img" alt="">
+      {% else %}
+      <div class="item-photo-placeholder" id="photo-placeholder">🖥</div>
+      {% endif %}
+      <div class="item-photo-overlay" id="photo-overlay">
+        <label class="btn-primary photo-upload-label" title="Upload photo">
+          📷 Upload
+          <input type="file" id="photo-input" accept="image/*" hidden>
+        </label>
+        {% if item.has_photo %}
+        <button class="btn-danger-sm" id="btn-del-photo">Remove</button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="item-meta">
+      <div class="item-meta-header">
+        <h1 class="item-title" id="item-title"
+            contenteditable="true"
+            data-field="name"
+            spellcheck="false">{{ item.name }}</h1>
+        <a href="/" class="btn-secondary btn-sm">← Back</a>
+      </div>
+
+      <div class="item-cat-row">
+        <span class="muted-text">Category:</span>
+        <select id="item-cat-select" class="cat-select">
+          {% for cat in categories %}
+          <option value="{{ cat }}" {% if cat == item.category %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+        {% if item.category in ('Desktops', 'Laptops') %}
+        <span class="muted-text era-sep">Appx. Era:</span>
+        <select id="item-year-select" class="cat-select">
+          <option value="">—</option>
+          {% for y in range(current_year, 1969, -1) %}
+          <option value="{{ y }}" {% if item.year == y|string %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      </div>
+
+      {% if item.category == 'Hardware' %}
+      <div class="item-cat-row">
+        <span class="muted-text">Type:</span>
+        <select id="item-hwtype-select" class="cat-select">
+          <option value="">— Select type —</option>
+          {% for t in hw_type_names %}
+          <option value="{{ t }}" {% if t == item.hardware_type %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if item.category == 'Manuals' %}
+      <div class="item-url-row">
+        <span class="muted-text url-label">URL:</span>
+        <input type="url" id="item-url-input" class="url-input"
+               value="{{ item.url }}" placeholder="https://…">
+        <a href="{{ item.url }}" target="_blank" rel="noopener"
+           class="hw-link-btn" id="item-url-link"
+           {% if not item.url %}hidden{% endif %}>↗</a>
+      </div>
+      {% endif %}
+
+      <div class="item-desc-wrap">
+        <div class="section-label">Description</div>
+        <div class="item-desc" id="item-desc"
+             contenteditable="true"
+             data-field="description"
+             data-placeholder="Add a description…">{{ item.description or '' }}</div>
+      </div>
+
+      <div class="item-footer-row">
+        <span class="muted-text item-date">Added {{ item.created_at[:10] }}</span>
+        <button class="btn-danger-sm" id="btn-delete-item">Delete item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sections: Specs · Notes · Tasks ───────────────────────────────── -->
+  <div class="item-sections">
+
+    {% if item.category == 'Desktops' %}
+    <!-- Specifications — Desktop (hardware-linked dropdowns) -->
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Specifications</h2>
+      </div>
+      <div class="prespec-grid prespec-grid--single">
+        {% for key in desktop_specs %}
+        {% set s          = specs_by_key.get(key, {}) %}
+        {% set val        = s.get('value', '') %}
+        {% set hw_type    = desktop_spec_hw_map.get(key) %}
+        {% set hw_options = hw_items_by_type.get(hw_type, []) if hw_type else [] %}
+        <div class="prespec-row">
+          <span class="prespec-label">{{ key }}</span>
+          {% if hw_type %}
+          <div class="hw-link-wrap">
+            <select class="prespec-input prespec-select"
+                    data-key="{{ key }}"
+                    data-spec-id="{{ s.get('id', '') }}">
+              <option value="">—</option>
+              {% for hw in hw_options %}
+              <option value="{{ hw.name }}" data-hw-id="{{ hw.id }}"
+                      {% if val == hw.name %}selected{% endif %}>{{ hw.name }}</option>
+              {% endfor %}
+              {% if val and val not in hw_options | map(attribute='name') | list %}
+              <option value="{{ val }}" selected>{{ val }}</option>
+              {% endif %}
+            </select>
+            {% if val %}
+            {% set matched = hw_options | selectattr('name', 'equalto', val) | list %}
+            {% if matched %}
+            <a href="/item/{{ matched[0].id }}" class="hw-link-btn" title="Open {{ val }}">↗</a>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% else %}
+          <input type="text" class="prespec-input"
+                 data-key="{{ key }}"
+                 data-spec-id="{{ s.get('id', '') }}"
+                 value="{{ val }}" placeholder="—">
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% elif item.category == 'Laptops' %}
+    <!-- Specifications — Laptop (all free text) -->
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Specifications</h2>
+      </div>
+      <div class="prespec-grid prespec-grid--single">
+        {% for key in laptop_specs %}
+        {% set s = specs_by_key.get(key, {}) %}
+        <div class="prespec-row">
+          <span class="prespec-label">{{ key }}</span>
+          <input type="text" class="prespec-input"
+                 data-key="{{ key }}"
+                 data-spec-id="{{ s.get('id', '') }}"
+                 value="{{ s.get('value', '') }}" placeholder="—">
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% elif item.category == 'Hardware' and item.hardware_type %}
+    {% set hw_fields = hardware_templates.get(item.hardware_type, []) %}
+    <!-- Specifications (full width, hardware type template) -->
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">{{ item.hardware_type }} — Specifications</h2>
+      </div>
+      <div class="prespec-grid">
+        {% for field in hw_fields %}
+        {% set s = specs_by_key.get(field.key, {}) %}
+        {% set val = s.get('value', '') %}
+        <div class="prespec-row">
+          <span class="prespec-label">{{ field.key }}</span>
+          {% if field.type == 'select' %}
+          <select class="prespec-input prespec-select"
+                  data-key="{{ field.key }}"
+                  data-spec-id="{{ s.get('id', '') }}">
+            <option value="">—</option>
+            {% for opt in field.options %}
+            <option value="{{ opt }}" {% if val == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+          {% elif field.type == 'number+unit' %}
+          <div class="prespec-numunit"
+               data-key="{{ field.key }}"
+               data-spec-id="{{ s.get('id', '') }}"
+               data-value="{{ val }}">
+            <input type="text" class="prespec-num" inputmode="numeric" placeholder="0">
+            <select class="prespec-unit">
+              {% for unit in field.units %}
+              <option value="{{ unit }}">{{ unit }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% else %}
+          <input type="text" class="prespec-input"
+                 data-key="{{ field.key }}"
+                 data-spec-id="{{ s.get('id', '') }}"
+                 value="{{ val }}"
+                 placeholder="—">
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% elif item.category == 'Hardware' %}
+    <!-- Hardware item with no type selected yet -->
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Specifications</h2>
+      </div>
+      <p class="section-empty">Select a hardware type above to see the specification fields.</p>
+    </section>
+
+    {% elif item.category == 'Manuals' %}
+    <!-- Manual files (full width) -->
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Files</h2>
+        <label class="btn-add manual-upload-label">
+          ＋ Upload
+          <input type="file" id="manual-file-input"
+                 accept=".md,.doc,.docx,.pdf,.txt" multiple hidden>
+        </label>
+      </div>
+      <p class="settings-desc" style="margin-bottom:8px">PDF · Word (.doc/.docx) · Markdown · Plain text</p>
+      <ul class="manual-files-list" id="manual-files-list">
+        {% for f in manual_files %}
+        <li class="manual-file-item" data-id="{{ f.id }}">
+          <span class="file-icon">{{ f | file_icon }}</span>
+          <span class="file-name">{{ f.filename }}</span>
+          <span class="file-size muted-text">{{ f.size | filesize }}</span>
+          <button class="btn-xs view-file-btn"
+                  data-file-id="{{ f.id }}"
+                  data-filename="{{ f.filename }}"
+                  title="Read">👁</button>
+          <a href="/api/manual-file/{{ f.id }}"
+             download="{{ f.filename }}" class="btn-xs" title="Download">↓</a>
+          <button class="btn-xs btn-danger-xs" data-del-file="{{ f.id }}">✕</button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if not manual_files %}
+      <p class="section-empty" id="files-empty">No files uploaded yet.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Linked manuals (Desktop · Laptop · Hardware) -->
+    {% if item.category in ('Desktops', 'Laptops', 'Hardware') %}
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Manuals</h2>
+      </div>
+      <div class="linked-manuals" id="linked-manuals">
+        {% for m in linked_manuals %}
+        <div class="linked-manual-item"
+             data-link-id="{{ m.id }}"
+             data-manual-id="{{ m.manual_id }}"
+             data-manual-name="{{ m.name }}">
+          <span class="linked-manual-name">{{ m.name }}</span>
+          <button class="btn-xs linked-manual-view" title="Read">👁</button>
+          <a href="/item/{{ m.manual_id }}" class="hw-link-btn" title="Open manual page">↗</a>
+          <button class="btn-xs btn-danger-xs linked-manual-unlink">✕</button>
+        </div>
+        {% endfor %}
+        {% if not linked_manuals %}
+        <p class="section-empty" id="linked-manuals-empty">No manuals linked yet.</p>
+        {% endif %}
+      </div>
+      {% if all_manuals %}
+      <div class="manual-add-row" style="margin-top:10px">
+        {% set linked_ids = linked_manuals | map(attribute='manual_id') | list %}
+        <select id="manual-add-select" class="cat-select">
+          <option value="">＋ Link a manual…</option>
+          {% for m in all_manuals %}
+          {% if m.id not in linked_ids %}
+          <option value="{{ m.id }}" data-name="{{ m.name }}">{{ m.name }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <p class="muted-text" style="font-size:.8rem;margin-top:8px">
+        No manuals in your database yet.
+        <a href="/?cat=Manuals" style="color:var(--accent)">Add one first →</a>
+      </p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Gallery photos -->
+    {% if item.category in ('Desktops', 'Laptops', 'Hardware') %}
+    <section class="item-section item-section--full">
+      <div class="section-header">
+        <h2 class="section-title">Photos</h2>
+        <label class="btn-add gallery-upload-label">
+          ＋ Add photos
+          <input type="file" id="gallery-upload" accept="image/*" multiple hidden>
+        </label>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+        {% for pid in gallery_photo_ids %}
+        <div class="gallery-thumb" data-photo-id="{{ pid }}" data-index="{{ loop.index0 }}">
+          <img src="/api/gallery-photo/{{ pid }}" alt="" loading="lazy">
+          <button class="gallery-del-btn" data-del-gallery="{{ pid }}" title="Delete">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% if not gallery_photo_ids %}
+      <p class="section-empty" id="gallery-empty">No photos yet.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Notes -->
+    <section class="item-section">
+      <div class="section-header">
+        <h2 class="section-title">Notes</h2>
+        <button class="btn-add" id="btn-add-note">＋ Add</button>
+      </div>
+
+      <div class="note-add-form" id="note-add-form" hidden>
+        <textarea class="note-textarea" id="note-new-text" placeholder="Write a note…" rows="3"></textarea>
+        <div class="form-actions">
+          <button class="btn-primary btn-sm" id="note-save">Save</button>
+          <button class="btn-secondary btn-sm" id="note-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <ul class="notes-list" id="notes-list">
+        {% for note in notes %}
+        <li class="note-item" data-id="{{ note.id }}">
+          <div class="note-content" contenteditable="false">{{ note.content }}</div>
+          <div class="note-actions">
+            <span class="muted-text note-date">{{ note.created_at[:10] }}</span>
+            <button class="btn-xs" data-edit-note="{{ note.id }}">Edit</button>
+            <button class="btn-xs btn-danger-xs" data-del-note="{{ note.id }}">✕</button>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if not notes %}
+      <p class="section-empty">No notes yet.</p>
+      {% endif %}
+    </section>
+
+    <!-- Tasks -->
+    <section class="item-section">
+      <div class="section-header">
+        <h2 class="section-title">Tasks</h2>
+        <button class="btn-add" id="btn-add-task">＋ Add</button>
+      </div>
+
+      <div class="task-add-form" id="task-add-form" hidden>
+        <div class="task-input-row">
+          <input type="text" id="task-new-text" class="task-input" placeholder="New task…">
+          <button class="btn-primary btn-sm" id="task-save">Add</button>
+          <button class="btn-secondary btn-sm" id="task-cancel">✕</button>
+        </div>
+      </div>
+
+      <ul class="tasks-list" id="tasks-list">
+        {% for task in tasks %}
+        <li class="task-item {% if task.done %}task-done{% endif %}" data-id="{{ task.id }}">
+          <input type="checkbox" class="task-cb" {% if task.done %}checked{% endif %}>
+          <span class="task-text">{{ task.text }}</span>
+          <button class="btn-xs btn-danger-xs task-del" data-del-task="{{ task.id }}">✕</button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if not tasks %}
+      <p class="section-empty" id="tasks-empty">No tasks yet.</p>
+      {% endif %}
+    </section>
+
+  </div>
+</div>
+
+{% if item.category in ('Desktops', 'Laptops', 'Hardware') %}
+<!-- Photo lightbox -->
+<div class="lightbox-backdrop" id="lightbox" hidden>
+  <button class="lightbox-close" id="lightbox-close" title="Close (Esc)">✕</button>
+  <button class="lightbox-arrow lightbox-prev" id="lightbox-prev" title="Previous (←)">‹</button>
+  <div class="lightbox-img-wrap">
+    <img id="lightbox-img" src="" alt="">
+  </div>
+  <button class="lightbox-arrow lightbox-next" id="lightbox-next" title="Next (→)">›</button>
+  <div class="lightbox-counter" id="lightbox-counter"></div>
+</div>
+{% endif %}
+
+<!-- File reading modal (used on all item types) -->
+<div class="modal-backdrop" id="view-modal-backdrop" hidden>
+  <div class="modal modal-view" role="dialog" aria-modal="true">
+    <div class="view-modal-header">
+      <h2 class="view-modal-title" id="view-modal-title"></h2>
+      <button class="btn-secondary btn-sm" id="view-modal-close">✕ Close</button>
+    </div>
+    <div class="view-modal-body" id="view-modal-body">
+      <div class="view-loading">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEM_ID = {{ item.id | tojson }};
+
+// ── Inline edit helpers ────────────────────────────────────────────────────
+function saveField(field, content) {
+  return fetch('/api/item/' + ITEM_ID, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ field, content }),
+  });
+}
+
+// Title (contenteditable)
+const titleEl = document.getElementById('item-title');
+titleEl.addEventListener('blur', () => saveField('name', titleEl.textContent.trim()));
+titleEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); } });
+
+// Description (contenteditable)
+const descEl = document.getElementById('item-desc');
+if (!descEl.textContent.trim()) descEl.classList.add('placeholder-shown');
+descEl.addEventListener('focus', () => descEl.classList.remove('placeholder-shown'));
+descEl.addEventListener('blur', () => {
+  if (!descEl.textContent.trim()) descEl.classList.add('placeholder-shown');
+  saveField('description', descEl.textContent.trim());
+});
+
+// Category select
+document.getElementById('item-cat-select').addEventListener('change', function() {
+  saveField('category', this.value).then(() => location.reload());
+});
+
+// Year (era) select
+const yearSelect = document.getElementById('item-year-select');
+if (yearSelect) {
+  yearSelect.addEventListener('change', function() {
+    saveField('year', this.value);
+  });
+}
+
+// Hardware type select
+const hwTypeSelect = document.getElementById('item-hwtype-select');
+if (hwTypeSelect) {
+  hwTypeSelect.addEventListener('change', function() {
+    saveField('hardware_type', this.value).then(() => location.reload());
+  });
+}
+
+// ── Delete item ────────────────────────────────────────────────────────────
+document.getElementById('btn-delete-item').addEventListener('click', async () => {
+  if (!confirm('Delete this item and all its data? This cannot be undone.')) return;
+  await fetch('/api/item/' + ITEM_ID, { method: 'DELETE' });
+  window.location.href = '/';
+});
+
+// ── Photo ──────────────────────────────────────────────────────────────────
+document.getElementById('photo-input').addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('photo', file);
+  const res = await fetch('/api/photo/' + ITEM_ID, { method: 'POST', body: fd });
+  if (res.ok) location.reload();
+});
+
+const btnDelPhoto = document.getElementById('btn-del-photo');
+if (btnDelPhoto) {
+  btnDelPhoto.addEventListener('click', async () => {
+    if (!confirm('Remove photo?')) return;
+    await fetch('/api/photo/' + ITEM_ID, { method: 'DELETE' });
+    location.reload();
+  });
+}
+
+// ── Notes ──────────────────────────────────────────────────────────────────
+const noteAddForm = document.getElementById('note-add-form');
+const noteNewText = document.getElementById('note-new-text');
+
+document.getElementById('btn-add-note').addEventListener('click', () => {
+  noteAddForm.hidden = false;
+  noteNewText.focus();
+});
+document.getElementById('note-cancel').addEventListener('click', () => {
+  noteAddForm.hidden = true;
+  noteNewText.value = '';
+});
+document.getElementById('note-save').addEventListener('click', async () => {
+  const content = noteNewText.value.trim();
+  if (!content) return;
+  const res  = await fetch('/api/note/' + ITEM_ID, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    addNoteToList(data.id, content, 'today');
+    noteNewText.value = '';
+    noteAddForm.hidden = true;
+    document.querySelector('#notes-list + .section-empty')?.remove();
+  }
+});
+
+function addNoteToList(id, content, dateStr) {
+  const list = document.getElementById('notes-list');
+  const li   = document.createElement('li');
+  li.className = 'note-item';
+  li.dataset.id = id;
+  li.innerHTML =
+    `<div class="note-content" contenteditable="false">${escHtml(content)}</div>
+     <div class="note-actions">
+       <span class="muted-text note-date">${escHtml(dateStr)}</span>
+       <button class="btn-xs" data-edit-note="${id}">Edit</button>
+       <button class="btn-xs btn-danger-xs" data-del-note="${id}">✕</button>
+     </div>`;
+  list.insertAdjacentElement('afterbegin', li);
+  wireNoteItem(li);
+}
+
+function wireNoteItem(li) {
+  const id      = li.dataset.id;
+  const content = li.querySelector('.note-content');
+
+  li.querySelector('[data-edit-note]').addEventListener('click', () => {
+    content.contentEditable = 'true';
+    content.focus();
+  });
+  content.addEventListener('blur', async () => {
+    content.contentEditable = 'false';
+    await fetch('/api/note/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: content.textContent.trim() }),
+    });
+  });
+  li.querySelector('[data-del-note]').addEventListener('click', async () => {
+    if (!confirm('Delete this note?')) return;
+    await fetch('/api/note/' + id, { method: 'DELETE' });
+    li.remove();
+  });
+}
+document.querySelectorAll('.note-item').forEach(wireNoteItem);
+
+// ── Tasks ──────────────────────────────────────────────────────────────────
+const taskAddForm = document.getElementById('task-add-form');
+const taskNewText = document.getElementById('task-new-text');
+
+document.getElementById('btn-add-task').addEventListener('click', () => {
+  taskAddForm.hidden = false;
+  taskNewText.focus();
+});
+document.getElementById('task-cancel').addEventListener('click', () => {
+  taskAddForm.hidden = true;
+  taskNewText.value = '';
+});
+
+async function saveTask() {
+  const text = taskNewText.value.trim();
+  if (!text) return;
+  const res  = await fetch('/api/task/' + ITEM_ID, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    addTaskToList(data.id, text, false);
+    taskNewText.value = '';
+    taskAddForm.hidden = true;
+    document.getElementById('tasks-empty')?.remove();
+  }
+}
+document.getElementById('task-save').addEventListener('click', saveTask);
+taskNewText.addEventListener('keydown', e => { if (e.key === 'Enter') saveTask(); });
+
+function addTaskToList(id, text, done) {
+  const list = document.getElementById('tasks-list');
+  const li   = document.createElement('li');
+  li.className = 'task-item' + (done ? ' task-done' : '');
+  li.dataset.id = id;
+  li.innerHTML =
+    `<input type="checkbox" class="task-cb" ${done ? 'checked' : ''}>
+     <span class="task-text">${escHtml(text)}</span>
+     <button class="btn-xs btn-danger-xs task-del" data-del-task="${id}">✕</button>`;
+  list.appendChild(li);
+  wireTaskItem(li);
+}
+
+function wireTaskItem(li) {
+  const id = li.dataset.id;
+  li.querySelector('.task-cb').addEventListener('change', async function() {
+    li.classList.toggle('task-done', this.checked);
+    await fetch('/api/task/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: this.checked }),
+    });
+  });
+  li.querySelector('.task-del').addEventListener('click', async () => {
+    await fetch('/api/task/' + id, { method: 'DELETE' });
+    li.remove();
+  });
+}
+document.querySelectorAll('.task-item').forEach(wireTaskItem);
+
+// ── Specs (predefined text inputs — Desktop, Laptop, and Hardware text fields) ──
+async function upsertSpec(key, value, specId) {
+  if (specId) {
+    await fetch('/api/spec/' + specId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value }),
+    });
+    return specId;
+  } else if (value) {
+    const res  = await fetch('/api/spec/' + ITEM_ID, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value }),
+    });
+    const data = await res.json();
+    return data.id ? String(data.id) : '';
+  }
+  return specId;
+}
+
+// Text inputs — blur to save
+document.querySelectorAll('.prespec-input:not(.prespec-select)').forEach(input => {
+  let savedValue = input.value;
+  input.addEventListener('blur', async () => {
+    const value = input.value.trim();
+    if (value === savedValue.trim()) return;
+    savedValue = value;
+    const newId = await upsertSpec(input.dataset.key, value, input.dataset.specId);
+    if (newId) input.dataset.specId = newId;
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+});
+
+// Select inputs — change to save (includes hw-linked dropdowns)
+document.querySelectorAll('.prespec-select').forEach(sel => {
+  let savedValue = sel.value;
+  sel.addEventListener('change', async () => {
+    const value = sel.value;
+    if (value === savedValue) return;
+    savedValue = value;
+    const newId = await upsertSpec(sel.dataset.key, value, sel.dataset.specId);
+    if (newId) sel.dataset.specId = newId;
+
+    // Update the ↗ link next to hw-linked dropdowns
+    const wrap = sel.closest('.hw-link-wrap');
+    if (!wrap) return;
+    let linkBtn = wrap.querySelector('.hw-link-btn');
+    const chosen = sel.options[sel.selectedIndex];
+    const hwId   = chosen ? chosen.dataset.hwId : '';
+    if (hwId) {
+      if (!linkBtn) {
+        linkBtn = document.createElement('a');
+        linkBtn.className = 'hw-link-btn';
+        linkBtn.title = 'Open item';
+        linkBtn.textContent = '↗';
+        wrap.appendChild(linkBtn);
+      }
+      linkBtn.href = '/item/' + hwId;
+    } else if (linkBtn) {
+      linkBtn.remove();
+    }
+  });
+});
+
+// Number+unit inputs — init values from data-value, then save on change
+document.querySelectorAll('.prespec-numunit').forEach(wrap => {
+  const numInput = wrap.querySelector('.prespec-num');
+  const unitSel  = wrap.querySelector('.prespec-unit');
+  const stored   = wrap.dataset.value || '';
+
+  // Parse "512 MB" → num="512", unit="MB"
+  const lastSpace = stored.lastIndexOf(' ');
+  if (lastSpace > -1) {
+    numInput.value = stored.slice(0, lastSpace);
+    const unit = stored.slice(lastSpace + 1);
+    for (const opt of unitSel.options) {
+      if (opt.value === unit) { opt.selected = true; break; }
+    }
+  } else {
+    numInput.value = stored;
+  }
+
+  let savedValue = stored;
+
+  async function saveNumUnit() {
+    const num   = numInput.value.trim();
+    const value = num ? `${num} ${unitSel.value}` : '';
+    if (value === savedValue) return;
+    savedValue = value;
+    const newId = await upsertSpec(wrap.dataset.key, value, wrap.dataset.specId);
+    if (newId) wrap.dataset.specId = newId;
+  }
+
+  numInput.addEventListener('blur',    saveNumUnit);
+  unitSel.addEventListener('change',   saveNumUnit);
+  numInput.addEventListener('keydown', e => { if (e.key === 'Enter') numInput.blur(); });
+});
+
+// ── Gallery photos (Hardware) ─────────────────────────────────────────────
+const galleryUpload = document.getElementById('gallery-upload');
+if (galleryUpload) {
+  let galleryIds = {{ gallery_photo_ids | tojson }};
+
+  galleryUpload.addEventListener('change', async () => {
+    for (const file of galleryUpload.files) {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res  = await fetch('/api/gallery/' + ITEM_ID, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        galleryIds.push(data.id);
+        addGalleryThumb(data.id, galleryIds.length - 1);
+        document.getElementById('gallery-empty')?.remove();
+      }
+    }
+    galleryUpload.value = '';
+  });
+
+  function addGalleryThumb(photoId, index) {
+    const grid = document.getElementById('gallery-grid');
+    const div  = document.createElement('div');
+    div.className = 'gallery-thumb';
+    div.dataset.photoId = photoId;
+    div.dataset.index   = index;
+    div.innerHTML =
+      `<img src="/api/gallery-photo/${photoId}" alt="" loading="lazy">
+       <button class="gallery-del-btn" data-del-gallery="${photoId}" title="Delete">✕</button>`;
+    grid.appendChild(div);
+    wireGalleryThumb(div);
+  }
+
+  function wireGalleryThumb(div) {
+    div.querySelector('img').addEventListener('click', () =>
+      openLightbox(parseInt(div.dataset.index)));
+    div.querySelector('.gallery-del-btn').addEventListener('click', async function(e) {
+      e.stopPropagation();
+      if (!confirm('Delete this photo?')) return;
+      const pid = this.dataset.delGallery;
+      const res = await fetch('/api/gallery-photo/' + pid, { method: 'DELETE' });
+      if (res.ok) {
+        const idx = galleryIds.indexOf(parseInt(pid));
+        if (idx > -1) galleryIds.splice(idx, 1);
+        div.remove();
+        // Re-index remaining thumbs
+        document.querySelectorAll('.gallery-thumb').forEach((t, i) => t.dataset.index = i);
+        if (galleryIds.length === 0) {
+          const grid = document.getElementById('gallery-grid');
+          const p = document.createElement('p');
+          p.className = 'section-empty'; p.id = 'gallery-empty';
+          p.textContent = 'No photos yet.';
+          grid.after(p);
+        }
+      }
+    });
+  }
+  document.querySelectorAll('.gallery-thumb').forEach(wireGalleryThumb);
+
+  // ── Lightbox ────────────────────────────────────────────────────────────
+  const lightbox    = document.getElementById('lightbox');
+  const lbImg       = document.getElementById('lightbox-img');
+  const lbCounter   = document.getElementById('lightbox-counter');
+  const lbPrev      = document.getElementById('lightbox-prev');
+  const lbNext      = document.getElementById('lightbox-next');
+  let   lbIndex     = 0;
+
+  function openLightbox(index) {
+    lbIndex = index;
+    renderLightbox();
+    lightbox.hidden = false;
+  }
+
+  function renderLightbox() {
+    lbImg.src = '/api/gallery-photo/' + galleryIds[lbIndex];
+    lbCounter.textContent = galleryIds.length > 1
+      ? `${lbIndex + 1} / ${galleryIds.length}` : '';
+    lbPrev.hidden = galleryIds.length <= 1;
+    lbNext.hidden = galleryIds.length <= 1;
+  }
+
+  lbPrev.addEventListener('click', () => {
+    lbIndex = (lbIndex - 1 + galleryIds.length) % galleryIds.length;
+    renderLightbox();
+  });
+  lbNext.addEventListener('click', () => {
+    lbIndex = (lbIndex + 1) % galleryIds.length;
+    renderLightbox();
+  });
+  document.getElementById('lightbox-close').addEventListener('click', () =>
+    lightbox.hidden = true);
+  lightbox.addEventListener('click', e => {
+    if (e.target === lightbox) lightbox.hidden = true;
+  });
+  document.addEventListener('keydown', e => {
+    if (!lightbox || lightbox.hidden) return;
+    if (e.key === 'ArrowLeft')  { lbPrev.click(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { lbNext.click(); e.preventDefault(); }
+    if (e.key === 'Escape')     { lightbox.hidden = true; }
+  });
+}
+
+// ── URL field (Manuals) ───────────────────────────────────────────────────
+const urlInput = document.getElementById('item-url-input');
+if (urlInput) {
+  let savedUrl = urlInput.value;
+  urlInput.addEventListener('blur', async () => {
+    const value = urlInput.value.trim();
+    if (value === savedUrl) return;
+    savedUrl = value;
+    await saveField('url', value);
+    const urlLink = document.getElementById('item-url-link');
+    if (urlLink) { urlLink.href = value || '#'; urlLink.hidden = !value; }
+  });
+  urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') urlInput.blur(); });
+}
+
+// ── Manual file upload ────────────────────────────────────────────────────
+const manualFileInput = document.getElementById('manual-file-input');
+if (manualFileInput) {
+  manualFileInput.addEventListener('change', async () => {
+    const allowed = ['md', 'doc', 'docx', 'pdf', 'txt'];
+    for (const file of manualFileInput.files) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (!allowed.includes(ext)) { alert(`File type .${ext} is not allowed.`); continue; }
+      const fd = new FormData();
+      fd.append('file', file);
+      const res  = await fetch('/api/manual-file/' + ITEM_ID, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        addFileToList(data.id, data.filename, data.size);
+        document.getElementById('files-empty')?.remove();
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    }
+    manualFileInput.value = '';
+  });
+}
+
+const FILE_ICONS = {pdf:'📄', doc:'📝', docx:'📝', md:'📑', txt:'📃'};
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(1) + ' MB';
+}
+
+function addFileToList(id, filename, size) {
+  const list = document.getElementById('manual-files-list');
+  const ext  = filename.split('.').pop()?.toLowerCase();
+  const li   = document.createElement('li');
+  li.className = 'manual-file-item';
+  li.dataset.id = id;
+  li.innerHTML =
+    `<span class="file-icon">${FILE_ICONS[ext] || '📎'}</span>
+     <span class="file-name">${escHtml(filename)}</span>
+     <span class="file-size muted-text">${fmtSize(size)}</span>
+     <button class="btn-xs view-file-btn" data-file-id="${id}"
+             data-filename="${escHtml(filename)}" title="Read">👁</button>
+     <a href="/api/manual-file/${id}" download="${escHtml(filename)}" class="btn-xs" title="Download">↓</a>
+     <button class="btn-xs btn-danger-xs" data-del-file="${id}">✕</button>`;
+  list.appendChild(li);
+  wireFileItem(li);
+}
+
+function wireFileItem(li) {
+  li.querySelector('[data-del-file]').addEventListener('click', async function() {
+    if (!confirm('Delete this file?')) return;
+    const res = await fetch('/api/manual-file/' + this.dataset.delFile, { method: 'DELETE' });
+    if (res.ok) li.remove();
+  });
+  const viewBtn = li.querySelector('.view-file-btn');
+  if (viewBtn) {
+    viewBtn.addEventListener('click', () =>
+      openViewModal(viewBtn.dataset.fileId, viewBtn.dataset.filename));
+  }
+}
+document.querySelectorAll('.manual-file-item').forEach(wireFileItem);
+
+// ── File reading modal ─────────────────────────────────────────────────────
+const viewBackdrop = document.getElementById('view-modal-backdrop');
+const viewTitle    = document.getElementById('view-modal-title');
+const viewBody     = document.getElementById('view-modal-body');
+
+if (viewBackdrop) {
+  document.getElementById('view-modal-close').addEventListener('click', closeViewModal);
+  viewBackdrop.addEventListener('click', e => { if (e.target === viewBackdrop) closeViewModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewModal(); });
+}
+
+function closeViewModal() {
+  if (!viewBackdrop) return;
+  viewBackdrop.hidden = true;
+  viewBody.innerHTML = '<div class="view-loading">Loading…</div>';
+}
+
+async function openViewModal(fileId, filename) {
+  if (!viewBackdrop) return;
+  const ext = filename.split('.').pop()?.toLowerCase();
+  viewTitle.textContent = filename;
+  viewBackdrop.hidden = false;
+  viewBody.innerHTML = '<div class="view-loading">Loading…</div>';
+
+  if (ext === 'pdf') {
+    viewBody.innerHTML =
+      `<iframe class="view-iframe" src="/api/manual-file-view/${fileId}"></iframe>`;
+
+  } else if (ext === 'txt') {
+    try {
+      const res  = await fetch('/api/manual-file-view/' + fileId);
+      const text = await res.text();
+      const pre  = document.createElement('pre');
+      pre.className   = 'view-text-content';
+      pre.textContent = text;
+      viewBody.innerHTML = '';
+      viewBody.appendChild(pre);
+    } catch { viewBody.innerHTML = '<div class="view-loading">Failed to load file.</div>'; }
+
+  } else if (ext === 'md') {
+    try {
+      const res  = await fetch('/api/manual-file-view/' + fileId);
+      const text = await res.text();
+      const div  = document.createElement('div');
+      div.className = 'view-markdown-content';
+      const parseFn = (typeof marked !== 'undefined')
+        ? (marked.parse || marked)
+        : null;
+      div.innerHTML = parseFn ? parseFn(text) : `<pre>${escHtml(text)}</pre>`;
+      viewBody.innerHTML = '';
+      viewBody.appendChild(div);
+    } catch { viewBody.innerHTML = '<div class="view-loading">Failed to load file.</div>'; }
+
+  } else {
+    viewBody.innerHTML =
+      `<div class="view-unsupported">
+         <span style="font-size:3rem">📄</span>
+         <p>Word documents cannot be previewed in the browser.</p>
+         <a href="/api/manual-file/${fileId}" download="${escHtml(filename)}"
+            class="btn-primary">↓ Download to view</a>
+       </div>`;
+  }
+}
+
+// ── Linked manuals (Desktop · Laptop · Hardware) ──────────────────────────
+const manualAddSelect = document.getElementById('manual-add-select');
+if (manualAddSelect) {
+  manualAddSelect.addEventListener('change', async function() {
+    const manualId = this.value;
+    if (!manualId) return;
+    const opt  = this.options[this.selectedIndex];
+    const name = opt.dataset.name;
+    const res  = await fetch('/api/item-manuals/' + ITEM_ID, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ manual_id: manualId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      opt.remove();
+      this.value = '';
+      addLinkedManual(data.id, manualId, name);
+      document.getElementById('linked-manuals-empty')?.remove();
+    }
+  });
+}
+
+function addLinkedManual(linkId, manualId, name) {
+  const container = document.getElementById('linked-manuals');
+  const div = document.createElement('div');
+  div.className = 'linked-manual-item';
+  div.dataset.linkId    = linkId;
+  div.dataset.manualId  = manualId;
+  div.dataset.manualName = name;
+  div.innerHTML =
+    `<span class="linked-manual-name">${escHtml(name)}</span>
+     <button class="btn-xs linked-manual-view" title="Read">👁</button>
+     <a href="/item/${manualId}" class="hw-link-btn" title="Open manual page">↗</a>
+     <button class="btn-xs btn-danger-xs linked-manual-unlink">✕</button>`;
+  // Insert before the "no manuals" message if present, else append
+  const empty = document.getElementById('linked-manuals-empty');
+  if (empty) empty.before(div); else container.appendChild(div);
+  wireLinkedManual(div);
+}
+
+async function openManualPicker(manualId, manualName) {
+  viewTitle.textContent = manualName;
+  viewBackdrop.hidden   = false;
+  viewBody.innerHTML    = '<div class="view-loading">Loading…</div>';
+
+  const res   = await fetch('/api/manual-files/' + manualId);
+  const files = await res.json();
+
+  if (files.length === 0) {
+    viewBody.innerHTML =
+      `<div class="view-unsupported">
+         <span style="font-size:2.5rem">📚</span>
+         <p>No files are attached to this manual.</p>
+         <a href="/item/${manualId}" class="btn-primary">Open manual page →</a>
+       </div>`;
+    return;
+  }
+
+  if (files.length === 1) {
+    openViewModal(files[0].id, files[0].filename);
+    return;
+  }
+
+  // Multiple files — show picker list
+  const listEl = document.createElement('div');
+  listEl.className = 'file-picker';
+  files.forEach(f => {
+    const ext  = f.filename.split('.').pop()?.toLowerCase();
+    const icon = FILE_ICONS[ext] || '📎';
+    const size = fmtSize(f.size);
+    const row  = document.createElement('div');
+    row.className = 'file-picker-row';
+    row.innerHTML =
+      `<span class="file-icon">${icon}</span>
+       <span class="file-name">${escHtml(f.filename)}</span>
+       <span class="file-size muted-text">${size}</span>
+       <button class="btn-xs">👁 View</button>`;
+    row.querySelector('button').addEventListener('click', () =>
+      openViewModal(f.id, f.filename));
+    listEl.appendChild(row);
+  });
+  viewBody.innerHTML = '';
+  viewBody.appendChild(listEl);
+}
+
+function wireLinkedManual(div) {
+  div.querySelector('.linked-manual-view')?.addEventListener('click', () =>
+    openManualPicker(div.dataset.manualId, div.dataset.manualName));
+
+  div.querySelector('.linked-manual-unlink').addEventListener('click', async () => {
+    const res = await fetch('/api/item-manuals/' + div.dataset.linkId, { method: 'DELETE' });
+    if (res.ok) {
+      const sel = document.getElementById('manual-add-select');
+      if (sel) {
+        const opt = document.createElement('option');
+        opt.value = div.dataset.manualId;
+        opt.dataset.name = div.dataset.manualName;
+        opt.textContent  = div.dataset.manualName;
+        sel.appendChild(opt);
+      }
+      div.remove();
+    }
+  });
+}
+document.querySelectorAll('.linked-manual-item').forEach(wireLinkedManual);
+
+// ── Utility ───────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

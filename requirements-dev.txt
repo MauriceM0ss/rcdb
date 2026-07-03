@@ -1,0 +1,3 @@
+# Test / dev dependencies (app runtime deps are in requirements.txt)
+-r requirements.txt
+pytest==9.1.1

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}RCDB{% endblock %} · Retro Computer Database</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <!-- Apply the saved theme before the stylesheet paints, to avoid a flash. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('rcdb-theme') || 'neon';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'neon'); }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#07090b">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="site-header">
+    <a href="/" class="logo">
+      <span class="logo-icon">🖥</span>
+      <span class="logo-text">RCDB</span>
+    </a>
+    <span class="header-title">Retro Computer Database</span>
+    <div class="header-actions">
+      <button class="btn-icon" id="btn-new-item" title="Add new item">＋ New Object</button>
+      <button class="btn-icon" id="btn-settings" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- ── New Item Modal ─────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="new-item-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2 class="modal-title">Add New Item</h2>
+      <label class="modal-label">Name
+        <input type="text" id="new-item-name" class="modal-input" placeholder="e.g. IBM PC XT" autocomplete="off">
+      </label>
+      <label class="modal-label">Category
+        <select id="new-item-cat" class="modal-input">
+          {% for cat in categories %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="modal-label" id="new-item-hwtype-row" hidden>Hardware type
+        <select id="new-item-hwtype" class="modal-input">
+          <option value="">— Select type —</option>
+          {% for t in hw_type_names %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <p id="new-item-error" class="modal-error" hidden></p>
+      <div class="modal-actions">
+        <button class="btn-primary" id="new-item-save">Create</button>
+        <button class="btn-secondary" id="new-item-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings Modal ────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="settings-backdrop" hidden>
+    <div class="modal settings-modal" role="dialog" aria-modal="true">
+      <h2 class="modal-title">Settings</h2>
+
+      <div class="settings-tabs" role="tablist">
+        <button class="settings-tab is-active" data-tab="categories" role="tab">Categories</button>
+        <button class="settings-tab" data-tab="appearance" role="tab">Appearance</button>
+        <button class="settings-tab" data-tab="data" role="tab">Data</button>
+      </div>
+
+      <!-- ── Tab: Categories ──────────────────────────────────────────────── -->
+      <div class="settings-panel" data-panel="categories">
+        <div class="settings-section">
+          <h3 class="settings-section-title">Categories</h3>
+          <p class="settings-desc">Add, rename or delete the categories that organise your collection.</p>
+          <div id="cat-list" class="cat-manage-list"></div>
+          <div class="cat-add-row">
+            <input type="text" id="cat-new-name" class="modal-input" placeholder="New category name">
+            <button class="btn-primary" id="cat-add-btn">Add</button>
+          </div>
+          <p id="cat-error" class="modal-error" hidden></p>
+        </div>
+      </div><!-- /Tab: Categories -->
+
+      <!-- ── Tab: Appearance ──────────────────────────────────────────────── -->
+      <div class="settings-panel" data-panel="appearance" hidden>
+        <div class="settings-section">
+          <h3 class="settings-section-title">Theme</h3>
+          <label class="modal-label">Colour theme
+            <select id="theme-select" class="modal-input">
+              <option value="neon">Neon — dark terminal</option>
+              <option value="blue">Classic — deep blue</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <p class="settings-desc">Switches the colour scheme instantly. Your choice is remembered in this
+            browser.</p>
+        </div>
+      </div><!-- /Tab: Appearance -->
+
+      <!-- ── Tab: Data ────────────────────────────────────────────────────── -->
+      <div class="settings-panel" data-panel="data" hidden>
+
+        <!-- Export -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Export</h3>
+          <p class="settings-desc">Download a full backup of all data including photos.</p>
+          <a class="btn-primary" href="/api/export" download="rcdb.db">Export database</a>
+        </div>
+
+        <!-- Import -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Import</h3>
+          <p class="settings-desc">Restore from a previously exported file. <strong>Warning:</strong> this overwrites all current data.</p>
+          <div class="import-row">
+            <label class="btn-secondary">
+              Choose file…
+              <input type="file" id="import-file" accept=".db" hidden>
+            </label>
+            <span id="import-filename" class="muted-text">No file selected</span>
+          </div>
+          <div class="import-actions">
+            <button class="btn-primary" id="import-btn" disabled>Import</button>
+            <span id="import-status" class="settings-status"></span>
+          </div>
+        </div>
+
+        <!-- Reset -->
+        <div class="settings-section settings-section--danger">
+          <h3 class="settings-section-title">Reset all data</h3>
+          <p class="settings-desc">Permanently deletes every item, photo, file, note and category. Cannot be undone.</p>
+          <button class="btn-danger-sm" id="reset-open-btn">Reset database…</button>
+          <div id="reset-confirm-area" hidden>
+            <p class="settings-desc">Type <strong>RESET</strong> to confirm:</p>
+            <div class="import-row" style="margin-top:6px">
+              <input type="text" id="reset-confirm-input" class="modal-input"
+                     placeholder="RESET" autocomplete="off" style="max-width:140px">
+              <button class="btn-danger-sm" id="reset-confirm-btn">Delete everything</button>
+            </div>
+            <span id="reset-status" class="settings-status"></span>
+          </div>
+        </div>
+
+      </div><!-- /Tab: Data -->
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="settings-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── App body ───────────────────────────────────────────────────────── -->
+  <div class="app-body">
+    <nav class="nav-sidebar" id="nav-sidebar" aria-label="Navigation">
+      <a href="/" class="sidebar-all-link {% if request.path == '/' and not request.args.get('cat') %}active{% endif %}">
+        All Items
+      </a>
+      <div class="nav-tree" id="nav-tree">
+        <span class="nav-tree-loading">Loading…</span>
+      </div>
+    </nav>
+
+    <main class="app-main">{% block content %}{% endblock %}</main>
+  </div>
+
+  <script>
+  // ── Theme switching ────────────────────────────────────────────────────────
+  // The <head> applies the saved theme before paint; here we keep the picker in
+  // sync, persist changes, and match the browser/PWA chrome colour to the theme.
+  const THEME_KEY = 'rcdb-theme';
+  const THEME_BG = { neon: '#07090b', blue: '#05070e', light: '#eef1f6' };
+  function currentTheme() { return localStorage.getItem(THEME_KEY) || 'neon'; }
+  function applyTheme(t) {
+    if (!THEME_BG[t]) t = 'neon';
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', THEME_BG[t]);
+    const sel = document.getElementById('theme-select');
+    if (sel) sel.value = t;
+  }
+  applyTheme(currentTheme());   // sync the picker + theme-color on load
+  document.getElementById('theme-select')
+    .addEventListener('change', e => applyTheme(e.target.value));
+
+  // ── New Item Modal ─────────────────────────────────────────────────────────
+  const newItemBackdrop  = document.getElementById('new-item-backdrop');
+  const newItemName      = document.getElementById('new-item-name');
+  const newItemCat       = document.getElementById('new-item-cat');
+  const newItemHwTypeRow = document.getElementById('new-item-hwtype-row');
+  const newItemHwType    = document.getElementById('new-item-hwtype');
+  const newItemError     = document.getElementById('new-item-error');
+
+  function syncHwTypeVisibility() {
+    newItemHwTypeRow.hidden = (newItemCat.value !== 'Hardware');
+    if (newItemHwTypeRow.hidden) newItemHwType.selectedIndex = 0;
+  }
+  newItemCat.addEventListener('change', syncHwTypeVisibility);
+
+  function openNewItemModal(preselectCat) {
+    newItemBackdrop.hidden = false;
+    newItemName.value = '';
+    newItemError.hidden = true;
+    if (preselectCat) newItemCat.value = preselectCat;
+    else newItemCat.selectedIndex = 0;
+    syncHwTypeVisibility();
+    newItemName.focus();
+  }
+
+  document.getElementById('btn-new-item').addEventListener('click', () => openNewItemModal(null));
+  document.getElementById('new-item-cancel').addEventListener('click', () => {
+    newItemBackdrop.hidden = true;
+  });
+  newItemBackdrop.addEventListener('click', e => {
+    if (e.target === newItemBackdrop) newItemBackdrop.hidden = true;
+  });
+
+  document.getElementById('new-item-save').addEventListener('click', async () => {
+    const name = newItemName.value.trim();
+    if (!name) { showNewError('Name is required.'); return; }
+    const category     = newItemCat.value;
+    const hardware_type = (category === 'Hardware') ? newItemHwType.value : '';
+    if (category === 'Hardware' && !hardware_type) {
+      showNewError('Please select a hardware type.'); return;
+    }
+    const res = await fetch('/api/item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, category, hardware_type }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showNewError(data.error || 'Error creating item.'); return; }
+    window.location.href = '/item/' + data.item_id;
+  });
+  newItemName.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('new-item-save').click();
+  });
+
+  function showNewError(msg) {
+    newItemError.textContent = msg;
+    newItemError.hidden = false;
+  }
+
+  // ── Settings Modal ─────────────────────────────────────────────────────────
+  const settingsBackdrop = document.getElementById('settings-backdrop');
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    settingsBackdrop.hidden = false;
+    loadCatList();
+  });
+  document.getElementById('settings-close').addEventListener('click', () => {
+    settingsBackdrop.hidden = true;
+  });
+  settingsBackdrop.addEventListener('click', e => {
+    if (e.target === settingsBackdrop) settingsBackdrop.hidden = true;
+  });
+
+  // Settings tabs
+  const settingsTabs   = [...document.querySelectorAll('.settings-tab')];
+  const settingsPanels = [...document.querySelectorAll('.settings-panel')];
+  settingsTabs.forEach(tab => tab.addEventListener('click', () => {
+    settingsTabs.forEach(t => t.classList.toggle('is-active', t === tab));
+    settingsPanels.forEach(p => p.hidden = p.dataset.panel !== tab.dataset.tab);
+  }));
+
+  // ── Category management ────────────────────────────────────────────────────
+  async function loadCatList() {
+    const res  = await fetch('/api/categories');
+    const cats = await res.json();
+    const list = document.getElementById('cat-list');
+    list.innerHTML = '';
+    cats.forEach(cat => {
+      const row = document.createElement('div');
+      row.className = 'cat-row';
+      row.innerHTML =
+        `<span class="cat-row-name">${escHtml(cat)}</span>
+         <div class="cat-row-actions">
+           <button class="btn-xs" data-rename="${escHtml(cat)}">Rename</button>
+           <button class="btn-xs btn-danger-xs" data-delete="${escHtml(cat)}">Delete</button>
+         </div>`;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('[data-rename]').forEach(btn => {
+      btn.addEventListener('click', () => renameCategory(btn.dataset.rename));
+    });
+    list.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', () => deleteCategory(btn.dataset.delete));
+    });
+  }
+
+  async function renameCategory(name) {
+    const newName = prompt(`Rename "${name}" to:`, name);
+    if (!newName || newName.trim() === name) return;
+    const res = await fetch('/api/categories/' + encodeURIComponent(name), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_name: newName.trim() }),
+    });
+    if (res.ok) { loadCatList(); location.reload(); }
+    else { const d = await res.json(); alert(d.error || 'Error'); }
+  }
+
+  async function deleteCategory(name) {
+    if (!confirm(`Delete category "${name}"? Items in it will be moved to another category.`)) return;
+    const res = await fetch('/api/categories/' + encodeURIComponent(name), { method: 'DELETE' });
+    if (res.ok) { loadCatList(); location.reload(); }
+    else { const d = await res.json(); alert(d.error || 'Error'); }
+  }
+
+  document.getElementById('cat-add-btn').addEventListener('click', async () => {
+    const name = document.getElementById('cat-new-name').value.trim();
+    const err  = document.getElementById('cat-error');
+    if (!name) { err.textContent = 'Name required.'; err.hidden = false; return; }
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      document.getElementById('cat-new-name').value = '';
+      err.hidden = true;
+      loadCatList();
+    } else {
+      const d = await res.json();
+      err.textContent = d.error || 'Error';
+      err.hidden = false;
+    }
+  });
+
+  // ── Import ────────────────────────────────────────────────────────────────
+  const importFile     = document.getElementById('import-file');
+  const importFilename = document.getElementById('import-filename');
+  const importBtn      = document.getElementById('import-btn');
+  const importStatus   = document.getElementById('import-status');
+
+  importFile.addEventListener('change', () => {
+    const f = importFile.files[0];
+    importFilename.textContent = f ? f.name : 'No file selected';
+    importBtn.disabled = !f;
+    importStatus.textContent = '';
+  });
+  importBtn.addEventListener('click', async () => {
+    const f = importFile.files[0];
+    if (!f) return;
+    if (!confirm('Overwrite all current data with this backup?')) return;
+    importBtn.disabled = true;
+    importStatus.textContent = 'Importing…';
+    const fd = new FormData();
+    fd.append('db', f);
+    const res = await fetch('/api/import', { method: 'POST', body: fd });
+    if (res.ok) {
+      importStatus.textContent = '✓ Done — reloading…';
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      importStatus.textContent = '✗ ' + (d.error || 'Error');
+      importBtn.disabled = false;
+    }
+  });
+
+  // ── Reset ────────────────────────────────────────────────────────────────────
+  const resetOpenBtn      = document.getElementById('reset-open-btn');
+  const resetConfirmArea  = document.getElementById('reset-confirm-area');
+  const resetConfirmInput = document.getElementById('reset-confirm-input');
+  const resetConfirmBtn   = document.getElementById('reset-confirm-btn');
+  const resetStatus       = document.getElementById('reset-status');
+
+  resetOpenBtn.addEventListener('click', () => {
+    resetConfirmArea.hidden = false;
+    resetOpenBtn.hidden     = true;
+    resetConfirmInput.value = '';
+    resetStatus.textContent = '';
+    resetConfirmInput.focus();
+  });
+
+  resetConfirmBtn.addEventListener('click', async () => {
+    if (resetConfirmInput.value.trim().toUpperCase() !== 'RESET') {
+      resetStatus.textContent = 'Type RESET (all caps) to confirm.';
+      return;
+    }
+    resetConfirmBtn.disabled = true;
+    resetStatus.textContent  = 'Resetting…';
+    const res = await fetch('/api/reset', { method: 'POST' });
+    if (res.ok) {
+      resetStatus.textContent = '✓ Done — reloading…';
+      setTimeout(() => window.location.href = '/', 1000);
+    } else {
+      resetStatus.textContent  = '✗ Error during reset.';
+      resetConfirmBtn.disabled = false;
+    }
+  });
+
+  // ── Sidebar tree ───────────────────────────────────────────────────────────
+  (async () => {
+    const treeEl    = document.getElementById('nav-tree');
+    const activeUrl = window.location.pathname + window.location.search;
+    const activeIid = window.location.pathname.startsWith('/item/')
+      ? window.location.pathname.slice('/item/'.length) : null;
+    const activeCat = new URLSearchParams(window.location.search).get('cat') || '';
+
+    const COLLAPSE_KEY = 'rcdb-sidebar-collapsed';
+    let collapsed = new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]'));
+
+    let data;
+    try {
+      const r = await fetch('/api/tree');
+      if (!r.ok) { treeEl.innerHTML = ''; return; }
+      data = await r.json();
+    } catch { treeEl.innerHTML = ''; return; }
+
+    const ul = document.createElement('ul');
+    ul.className = 'tree-list';
+
+    for (const { category, items } of data) {
+      const hasActive = items.some(i => i.id === activeIid);
+      const isOpen = hasActive || activeCat === category || !collapsed.has(category);
+
+      const catLi  = document.createElement('li');
+      catLi.className = 'tree-cat-item';
+
+      const catRow = document.createElement('div');
+      catRow.className = 'tree-cat-row' + (activeCat === category ? ' active-cat' : '');
+
+      const arrow = document.createElement('span');
+      arrow.className = 'tree-arrow';
+      arrow.textContent = isOpen ? '▾' : '▶';
+
+      const label = document.createElement('a');
+      label.href = '/?cat=' + encodeURIComponent(category);
+      label.className = 'tree-cat-label';
+      label.textContent = category;
+
+      const count = document.createElement('span');
+      count.className = 'tree-cat-count';
+      count.textContent = items.length;
+
+      catRow.appendChild(arrow);
+      catRow.appendChild(label);
+      catRow.appendChild(count);
+      catLi.appendChild(catRow);
+
+      const itemsUl = document.createElement('ul');
+      itemsUl.className = 'tree-items-list';
+      if (!isOpen) itemsUl.hidden = true;
+
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.className = 'tree-item-item' + (item.id === activeIid ? ' active' : '');
+        const a = document.createElement('a');
+        a.href = '/item/' + item.id;
+        a.className = 'tree-item-link';
+        a.textContent = item.name;
+        li.appendChild(a);
+        itemsUl.appendChild(li);
+      }
+
+      catLi.appendChild(itemsUl);
+      ul.appendChild(catLi);
+
+      arrow.addEventListener('click', e => {
+        e.preventDefault();
+        const opening = itemsUl.hidden;
+        itemsUl.hidden = !opening;
+        arrow.textContent = opening ? '▾' : '▶';
+        if (opening) collapsed.delete(category);
+        else collapsed.add(category);
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
+      });
+    }
+
+    treeEl.innerHTML = '';
+    treeEl.appendChild(ul);
+
+    const activeEl = treeEl.querySelector('.tree-item-item.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+  })();
+
+  // ── Utility ───────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  </script>
+</body>
+</html>
