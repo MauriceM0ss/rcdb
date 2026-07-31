@@ -17,6 +17,7 @@ select { -webkit-appearance: none; appearance: none; }
   /* Layout dimensions — independent of the colour theme. */
   --sidebar-w:   230px;
   --header-h:    54px;
+  --statusbar-h: 26px;
 }
 
 /* ── Neon — dark terminal (default). ── */
@@ -43,6 +44,11 @@ select { -webkit-appearance: none; appearance: none; }
   --sel-fg:      #fff;
   --radius:      6px;
   --shadow:      0 16px 50px rgba(0, 0, 0, .55);
+  --header-bg:     #000000;
+  --header-border: rgba(255, 255, 255, .14);
+  --header-text:   #e6edf2;          /* wordmark */
+  --header-fg:     #19f0ff;          /* subtitle */
+  --header-logo:   #39ff14;          /* logo glyph */
   --font-mono:   "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-head:   "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -71,6 +77,11 @@ select { -webkit-appearance: none; appearance: none; }
   --sel-fg:      #fff;
   --radius:      10px;
   --shadow:      0 2px 16px rgba(0, 0, 0, .5);
+  --header-bg:     #000000;
+  --header-border: rgba(255, 255, 255, .14);
+  --header-text:   #d3ddf2;
+  --header-fg:     #8593b0;          /* --accent2 lifted; too dark on black */
+  --header-logo:   #60a5fa;
   --font-mono:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-head:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
@@ -99,8 +110,105 @@ select { -webkit-appearance: none; appearance: none; }
   --sel-fg:      #0b1220;
   --radius:      10px;
   --shadow:      0 6px 24px rgba(30, 41, 70, .12);
+  /* The bar stays black here too, so these are on-black tints — this theme's own
+     --text and --accent are far too dark to read against it. */
+  --header-bg:     #000000;
+  --header-border: rgba(255, 255, 255, .16);
+  --header-text:   #e8ecf3;
+  --header-fg:     #cbd5e1;
+  --header-logo:   #60a5fa;
   --font-mono:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-head:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── GitHub — Primer dark. ── */
+[data-theme="github"] {
+  --bg:          #0d1117;
+  --surface:     #161b22;
+  --surface2:    #21262d;
+  --border:      #30363d;
+  --text:        #e6edf3;
+  --muted:       #8b949e;
+  --accent:      #2f81f7;
+  --accent-hi:   #58a6ff;
+  --accent2:     #8b949e;          /* labels plain muted */
+  --accent-dim:  rgba(47, 129, 247, .15);
+  --accent-glow: rgba(47, 129, 247, .15);
+  --danger:      #f85149;
+  --danger-dim:  rgba(248, 81, 73, .15);
+  --success:     #2ea043;          /* GitHub green */
+  --star:        #e3b341;          /* Primer attention yellow */
+  --on-accent:   #ffffff;
+  --glow-logo:   none;
+  --glow-text:   none;
+  --sel-bg:      rgba(47, 129, 247, .30);
+  --sel-fg:      #ffffff;
+  --radius:      6px;
+  --shadow:      0 8px 24px rgba(1, 4, 9, .5);
+  --header-bg:     #010409;          /* Primer canvas.inset — near-black */
+  --header-border: #30363d;
+  --header-text:   #e6edf3;
+  --header-fg:     #8b949e;
+  --header-logo:   #58a6ff;
+  --font-mono:   ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-head:   -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+                 Helvetica, Arial, sans-serif;
+}
+
+/* ── Amber. ── */
+[data-theme="amber"] {
+  --bg:          #0d0f14;
+  --surface:     #141820;
+  --surface2:    #1c2130;
+  --border:      #252d3d;
+  --text:        #dde3ef;
+  --muted:       #6b7794;
+  --accent:      #f59e0b;
+  --accent-hi:   #fbbf24;
+  --accent2:     #6b7794;          /* labels plain muted */
+  --accent-dim:  #3d2a00;
+  --accent-glow: rgba(245, 158, 11, .12);
+  --danger:      #ef4444;
+  --danger-dim:  #3b0f0f;
+  --success:     #22c55e;
+  --star:        #fbbf24;
+  --on-accent:   #000;
+  --glow-logo:   none;
+  --glow-text:   none;
+  --sel-bg:      rgba(245, 158, 11, .28);
+  --sel-fg:      #fff;
+  --radius:      10px;
+  --shadow:      0 2px 16px rgba(0, 0, 0, .5);
+  --header-bg:     #000000;
+  --header-border: rgba(255, 255, 255, .14);
+  --header-text:   #dde3ef;
+  --header-fg:     #f0b45f;
+  --header-logo:   #fbbf24;
+  --font-mono:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-head:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── Pane rule ──────────────────────────────────────────────────────────────
+   The 1px lines dividing one structural region from another: header from body,
+   sidebar from content, status bar from content, tab strip and modal head from
+   the panel below. Split out of --border so they can be switched off in one
+   place without also flattening the cards, inputs and spec tables that share
+   that token.
+
+   Declared once, outside the [data-theme] blocks on purpose: var() resolves at
+   use time, so `var(--border)` here means "whichever theme is live" — the
+   switch works across all five palettes without touching any of them.
+
+     transparent    lines off (current)
+     var(--border)  lines back on, theme-correct
+
+   The same token exists in the other apps in the family (cyberdash,
+   cybernewshub, SecAnalysis, MyHours, subscriptions, peoplemanager), so they
+   stay in step. Category rows in the tree, table cell rules and rendered-
+   markdown <hr>s deliberately still use --border — this is region boundaries
+   only. */
+:root {
+  --pane-rule: transparent;
 }
 
 body {
@@ -120,61 +228,100 @@ a { color: inherit; text-decoration: none; }
 .site-header {
   position: sticky; top: 0; z-index: 100;
   height: var(--header-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--pane-rule);
   padding: 0 20px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
 }
 
+.header-left { display: flex; align-items: center; gap: 10px; }
+
 .logo {
   display: flex; align-items: center; gap: 8px;
   font-family: var(--font-head); font-weight: 700; font-size: 1rem;
-  color: var(--accent); letter-spacing: -.01em;
-  text-shadow: var(--glow-logo);
+  color: var(--header-text); letter-spacing: -.01em;
 }
-.logo-icon { font-size: 1.3rem; text-shadow: none; }
+.logo-icon { font-size: 1.3rem; color: var(--header-logo); text-shadow: var(--glow-logo); }
 
 .header-title {
-  font-size: .7rem; font-weight: 600;
-  color: var(--accent2); letter-spacing: .24em; text-transform: uppercase;
+  font-size: .72rem; font-weight: 600;
+  color: var(--header-fg); letter-spacing: .22em; text-transform: uppercase;
   justify-self: center;
 }
 
 .header-actions { display: flex; gap: 8px; justify-self: end; align-items: center; }
 
+/* Hamburger: a drawer toggle on mobile, a sidebar collapse toggle on desktop. */
+.btn-menu { display: inline-flex; }
+
 .btn-icon {
   cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  line-height: 1;
   background: none;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--muted);
-  font-size: .85rem;
-  font-weight: 500;
-  padding: 5px 12px;
+  font-size: .95rem; font-weight: 500;
   transition: background .15s, color .15s, border-color .15s;
 }
 .btn-icon:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
 
+/* Top-bar buttons follow the SecAnalysis app: monochrome stroked SVG glyphs in
+   a chrome-free chip — no resting border, no accent outline on hover, and a
+   focus ring instead. The bordered .btn-icon above still serves any in-page use.
+   These sit on black whatever the theme, so the resting/hover tints are literal
+   on-black values rather than tokens: --muted and --text would put near-black
+   glyphs on a near-white chip in the Light theme. */
+.site-header .btn-icon { color: rgba(230, 237, 242, .62); border-color: transparent; }
+.site-header .btn-icon:hover { background: rgba(255, 255, 255, .1); color: #fff; border-color: transparent; }
+.site-header .btn-icon:focus-visible {
+  outline: none; border-color: var(--header-logo); box-shadow: 0 0 0 3px rgba(255, 255, 255, .14);
+}
+.site-header .btn-icon svg { display: block; }
+
 /* ── App layout ──────────────────────────────────────────────────────────── */
 .app-body {
   display: flex;
-  height: calc(100vh - var(--header-h));
+  height: calc(100vh - var(--header-h) - var(--statusbar-h));
   overflow: hidden;
 }
+
+/* ── Status bar ──────────────────────────────────────────────────────────── */
+.app-statusbar {
+  height: var(--statusbar-h); flex-shrink: 0;
+  background: var(--surface); border-top: 1px solid var(--pane-rule);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 16px; font-size: .76rem; color: var(--muted);
+}
+.status-item { display: inline-flex; align-items: center; gap: 7px; }
+.status-item--right { margin-left: auto; }
+.status-app { font-weight: 600; letter-spacing: .04em; }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success); flex-shrink: 0;
+  box-shadow: 0 0 6px var(--success);
+}
+/* An empty database gets a dim dot rather than a lit one claiming a healthy count. */
+.status-item.is-empty .status-dot { background: var(--muted); box-shadow: none; }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .nav-sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--pane-rule);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   padding-bottom: 16px;
+  transition: width .2s ease;
 }
+/* Dim overlay behind the mobile drawer (only used at narrow widths). */
+.nav-backdrop { position: fixed; inset: 0; z-index: 140; background: rgba(0, 0, 0, .5); }
 
 .sidebar-all-link {
   display: block;
@@ -182,7 +329,7 @@ a { color: inherit; text-decoration: none; }
   font-size: .82rem;
   font-weight: 600;
   color: var(--muted);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--pane-rule);
   transition: color .15s, background .15s;
 }
 .sidebar-all-link:hover, .sidebar-all-link.active {
@@ -670,7 +817,7 @@ select.prespec-input {
 
 .settings-tabs {
   display: flex; gap: 2px; flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--pane-rule);
 }
 .settings-tab {
   appearance: none; background: none; border: none; cursor: pointer;
@@ -842,7 +989,7 @@ select.prespec-input {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   flex-shrink: 0;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--pane-rule);
 }
 .view-modal-title {
   font-size: .95rem; font-weight: 600;
@@ -975,3 +1122,29 @@ select.modal-input,
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Sidebar drawer / collapse ────────────────────────────────────────────── */
+/* Narrow screens: the sidebar slides in over the content as a drawer. */
+@media (max-width: 760px) {
+  /* The hamburger costs header width; drop the subtitle so the wordmark and the
+     action icons still fit without colliding. */
+  .header-title { display: none; }
+  .site-header { padding: 0 12px; grid-template-columns: auto 1fr; }
+
+  .nav-sidebar {
+    position: fixed; top: var(--header-h); bottom: var(--statusbar-h); left: 0;
+    width: min(82vw, 300px); z-index: 150;
+    transform: translateX(-100%); transition: transform .22s ease;
+    box-shadow: var(--shadow);
+  }
+  .nav-sidebar.open { transform: none; }
+  .app-main { padding: 18px 14px 28px; }
+}
+
+@media (min-width: 761px) {
+  .nav-backdrop { display: none; }
+  /* Desktop: the hamburger collapses the sidebar to reclaim content width. */
+  body.nav-collapsed .nav-sidebar {
+    width: 0; min-width: 0; border-right-color: transparent; overflow: hidden;
+  }
+}

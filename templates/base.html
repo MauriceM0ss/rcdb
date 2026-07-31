@@ -24,14 +24,38 @@
 
   <!-- ── Header ─────────────────────────────────────────────────────────── -->
   <header class="site-header">
-    <a href="/" class="logo">
-      <span class="logo-icon">🖥</span>
-      <span class="logo-text">RCDB</span>
-    </a>
+    <div class="header-left">
+      <button class="btn-icon btn-menu" id="btn-menu" type="button" aria-label="Toggle the category tree">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <a href="/" class="logo">
+        <span class="logo-icon">🖥</span>
+        <span class="logo-text">RCDB</span>
+      </a>
+    </div>
     <span class="header-title">Retro Computer Database</span>
     <div class="header-actions">
-      <button class="btn-icon" id="btn-new-item" title="Add new item">＋ New Object</button>
-      <button class="btn-icon" id="btn-settings" title="Settings">⚙</button>
+      <button class="btn-icon" id="btn-new-item" type="button" title="Add a new object"
+              aria-label="Add a new object" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button class="btn-icon" id="btn-settings" type="button" title="Categories, appearance &amp; data"
+              aria-label="Categories, appearance and data settings" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -99,6 +123,8 @@
               <option value="neon">Neon — dark terminal</option>
               <option value="blue">Classic — deep blue</option>
               <option value="light">Light</option>
+              <option value="github">GitHub — Primer dark</option>
+              <option value="amber">Amber</option>
             </select>
           </label>
           <p class="settings-desc">Switches the colour scheme instantly. Your choice is remembered in this
@@ -159,6 +185,7 @@
 
   <!-- ── App body ───────────────────────────────────────────────────────── -->
   <div class="app-body">
+    <div class="nav-backdrop" id="nav-backdrop" hidden></div>
     <nav class="nav-sidebar" id="nav-sidebar" aria-label="Navigation">
       <a href="/" class="sidebar-all-link {% if request.path == '/' and not request.args.get('cat') %}active{% endif %}">
         All Items
@@ -171,12 +198,26 @@
     <main class="app-main">{% block content %}{% endblock %}</main>
   </div>
 
+  <!-- ── Status bar ─────────────────────────────────────────────────────── -->
+  <footer class="app-statusbar">
+    <span class="status-item status-app">RCDB</span>
+    <span class="status-item status-item--right {% if not total_items %}is-empty{% endif %}"
+          title="Objects in the database, across all categories">
+      <span class="status-dot"></span>
+      <span>{{ total_items }} object{{ '' if total_items == 1 else 's' }}
+            · {{ total_categories }} categor{{ 'y' if total_categories == 1 else 'ies' }}</span>
+    </span>
+  </footer>
+
   <script>
   // ── Theme switching ────────────────────────────────────────────────────────
   // The <head> applies the saved theme before paint; here we keep the picker in
   // sync, persist changes, and match the browser/PWA chrome colour to the theme.
   const THEME_KEY = 'rcdb-theme';
-  const THEME_BG = { neon: '#07090b', blue: '#05070e', light: '#eef1f6' };
+  const THEME_BG = {
+    neon: '#07090b', blue: '#05070e', light: '#eef1f6',
+    github: '#0d1117', amber: '#0d0f14',
+  };
   function currentTheme() { return localStorage.getItem(THEME_KEY) || 'neon'; }
   function applyTheme(t) {
     if (!THEME_BG[t]) t = 'neon';
@@ -190,6 +231,27 @@
   applyTheme(currentTheme());   // sync the picker + theme-color on load
   document.getElementById('theme-select')
     .addEventListener('change', e => applyTheme(e.target.value));
+
+  // ── Sidebar toggle: drawer on mobile, collapse on desktop ──────────────────
+  const sidebarEl = document.getElementById('nav-sidebar');
+  const navBackdrop = document.getElementById('nav-backdrop');
+  const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
+
+  function openSidebar() { sidebarEl.classList.add('open'); navBackdrop.hidden = false; }
+  function closeSidebar() { sidebarEl.classList.remove('open'); navBackdrop.hidden = true; }
+
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    if (isMobile()) {                                  // narrow: slide the drawer in / out
+      sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar();
+    } else {                                           // wide: collapse for more content room
+      document.body.classList.toggle('nav-collapsed');
+    }
+  });
+  navBackdrop.addEventListener('click', closeSidebar);
+
+  // Back to a wide viewport: drop leftover drawer state so it can't strand the
+  // sidebar half-open once the drawer styles no longer apply.
+  window.addEventListener('resize', () => { if (!isMobile()) closeSidebar(); });
 
   // ── New Item Modal ─────────────────────────────────────────────────────────
   const newItemBackdrop  = document.getElementById('new-item-backdrop');
