@@ -20,7 +20,7 @@ select { -webkit-appearance: none; appearance: none; }
   --statusbar-h: 26px;
 }
 
-/* ── Neon — dark terminal (default). ── */
+/* ── Dark Terminal (default). ── */
 :root, [data-theme="neon"] {
   --bg:          #07090b;          /* near-black */
   --surface:     #0e1114;          /* panels, cards, header, sidebar */
@@ -53,7 +53,7 @@ select { -webkit-appearance: none; appearance: none; }
   --font-head:   "Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ── Classic — deep-blue dark theme. ── */
+/* ── Deep Blue. ── */
 [data-theme="blue"] {
   --bg:          #05070e;
   --surface:     #0a0f1d;
@@ -121,7 +121,7 @@ select { -webkit-appearance: none; appearance: none; }
   --font-head:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* ── GitHub — Primer dark. ── */
+/* ── GitHub. ── */
 [data-theme="github"] {
   --bg:          #0d1117;
   --surface:     #161b22;
