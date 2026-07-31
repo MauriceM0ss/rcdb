@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime
 
+from .db import get_db
 from .hardware import HARDWARE_TEMPLATES
 
 _PALETTE = [
@@ -42,7 +43,15 @@ def register_template_helpers(app) -> None:
 
     @app.context_processor
     def _inject():
+        # Context processors only run when a template is rendered, so the JSON
+        # API routes never pay for these two counts. They feed the status bar.
+        conn = get_db()
+        total_items = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+        total_categories = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+        conn.close()
         return {
             "hw_type_names": list(HARDWARE_TEMPLATES.keys()),
             "current_year": datetime.now().year,
+            "total_items": total_items,
+            "total_categories": total_categories,
         }

@@ -87,8 +87,9 @@ _CSP = (
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data:; "
-    "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; "
-    "frame-src 'self'; form-action 'self'"
+    "object-src 'none'; base-uri 'self'; frame-ancestors 'self' http://localhost:5173 tauri://localhost; "
+    "frame-src 'self'; "
+    "form-action 'self'"
 )
 
 
